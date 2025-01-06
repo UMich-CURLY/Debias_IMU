@@ -1,0 +1,16 @@
+
+logs/
+models/
+venv/
+
+figures/
+weights/
+results/
+rosbagread/
+*.p
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
