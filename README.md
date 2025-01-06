@@ -5,8 +5,11 @@ This project focuses on debiasing (denoising) Inertial Measurement Unit (IMU) da
 
 The overall framework is illustrated below:
 
-<img src="figs/fig1.png" alt="Framework" width="600">
 
+<figure>
+  <img src="figs/fig1.png" alt="Framework" width="600">
+  <figcaption>Figure 1: The hierarchical neural ODE framework.</figcaption>
+</figure>
 
 ### Paper
 Coming soon
@@ -44,8 +47,15 @@ python3 BiasDy/mainFetch.py
 ## Results
 The full results will be saved to `./results`. Partial results:
 
-<img src="figs/MH_04_difficult.png" alt="Framework" width="600">
-<img src="figs/dataset_room4.png" alt="Framework" width="600">
+<figure>
+  <img src="figs/MH_04_difficult.png" alt="Framework" width="600">
+  <figcaption>Figure 2: The Euler angles results for <code>MH_04_difficult</code>.</figcaption>
+</figure>
+<figure>
+  <img src="figs/dataset_room4.png" alt="Framework" width="600">
+  <figcaption>Figure 3: The Euler angles results for <code>dataset_room4</code>.</figcaption>
+</figure>
+
 
 ## Citation
 To be added once the corresponding paper is published.
