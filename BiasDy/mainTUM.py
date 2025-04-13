@@ -6,7 +6,7 @@ from network_for_BiadDy import bw_func_choose, ba_func_choose
 from dataset import TUMDataset
 import argparse
 
-from learning import Gyro_train, Acc_train, Test, simple_visualization, plot_bias
+from learning import Gyro_train, Acc_train, Test, simple_visualization, plot_bias, trainGyroAxb, trainAccAxb, testAxb, compare_visualization
 
 
     
@@ -39,7 +39,7 @@ def main():
     loss_window = args.loss_window
     device = "cuda"
     epoch = args.epoch
-    test_recompute = True
+    test_recompute = False
 
     dataset_parameters = {
         'dataset_name': 'TUM',
@@ -96,13 +96,16 @@ def main():
     
 
     ##### simple evaluation and plot #####
-    print("Gyro lr: ", lr_Gyro, "Gyro weight_decay: ", weight_decay_Gyro)
     seq = [f for f in os.listdir(os.path.join(outputdir, "Sequnces-results")) if os.path.isdir(os.path.join(outputdir, "Sequnces-results", f))]
     for s in seq:
         path_tmp = os.path.join(outputdir, "Sequnces-results", s, "FullTra_result.p")
         simple_visualization(path_tmp)
         plot_bias(path_tmp, dataset_test)
         
+    trainGyroAxb(dataset_train, dataset_val, dataset_test, outputdir)
+    trainAccAxb(dataset_train, dataset_val, dataset_test, outputdir, os.path.join(outputdir, "GyroAxbweights", "model_epoch_1800.pt"))
+    testAxb(dataset_test, outputdir, recompute=True)
+    compare_visualization(dataset_test, outputdir)  
 
 
 

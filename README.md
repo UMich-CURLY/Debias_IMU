@@ -45,7 +45,7 @@ python3 BiasDy/mainFetch.py
 ```
 
 ## Results
-The full results will be saved to `./results`. Partial results:
+- The full results will be saved to `./results`. Partial results:
 
 <figure>
   <img src="figs/MH_04_difficult.png" alt="Framework" width="600">
@@ -56,11 +56,21 @@ The full results will be saved to `./results`. Partial results:
   <figcaption>Figure 3: The Euler angles results for <code>dataset_room4</code>.</figcaption>
 </figure>
 
+- To analyze the impact of integration length $N$, run: `./BiasDy/diff_int_time.sh`
+The results will be saved to ./results/ablation.pdf.
+
+- To visualize the VIO results, run: `python3 BiasDy/VIO_visualization.py`
+**Note:** Make sure to update the results path in the script with your own.
+
+- To evaluate the results using the [EVO](https://github.com/MichaelGrupp/evo) package, run: `python3 evo_evaluation/evo_results.py`
+**Note:** As above, you need to update the results path to match your setup.
+
 
 ## Citation
 To be added once the corresponding paper is published.
 
-
+## Others
+Calling `pickle.loads` will throw a warning in current versions, you can fix it by following [Here](https://github.com/pytorch/pytorch/issues/130242).
 
 ## Acknowledgments
 

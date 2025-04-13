@@ -74,7 +74,7 @@ def main():
         'sg_window_ba': 1,
         'sg_order_ba': 0,
         }
-    dataset_train = FetchDataset(**dataset_parameters, mode='train',recompute=True)
+    dataset_train = FetchDataset(**dataset_parameters, mode='train',recompute=False)
     dataset_val = FetchDataset(**dataset_parameters, mode='val')
     dataset_test = FetchDataset(**dataset_parameters, mode='test')
 

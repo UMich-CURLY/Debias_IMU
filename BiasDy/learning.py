@@ -16,6 +16,7 @@ from SO3diffeq import odeint_SO3
 from dataset import BaseDataset, EUROCDataset, TUMDataset, pdump, pload
 
 from evalutation import AOE, ATE, PlotVector3
+from utils import adjust_y_lim
 
 def write_parameters(type_train: str, dataset: BaseDataset, output_dir: str, network_type: str, lr: float, weight_decay: float, epoch: int):
     if type_train not in ['Gyro', 'Acc']:
@@ -105,11 +106,11 @@ def Gyro_train(dataset_train: BaseDataset, dataset_val: BaseDataset, outpur_dir:
         optimizer.step()
         
         writter.add_scalar("train_loss", train_loss.item(), epoch)
-        print(f"epoch: {epoch}, train_loss: {train_loss.item()}")
-
+        writter.add_scalar("lr", optimizer.param_groups[0]['lr'], epoch)
         scheduler.step()
 
         if epoch % val_freq == 0:
+            print(f"epoch: {epoch}, train_loss: {train_loss.item()}")
             with torch.no_grad():
                 model.eval()
                 loss_total = 0
@@ -171,9 +172,11 @@ def Acc_train(dataset_train: EUROCDataset, dataset_val: EUROCDataset, outpur_dir
     """MSELoss for acceleration"""
     
     ######### training #########
+    gpu_memory = []
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=300, gamma=0.5)
     for epoch in range(num_iterations):
+        torch.cuda.reset_peak_memory_stats()
         optimizer.zero_grad()
         model.train()
         
@@ -194,11 +197,12 @@ def Acc_train(dataset_train: EUROCDataset, dataset_val: EUROCDataset, outpur_dir
         optimizer.step()
         
         writter.add_scalar("train_loss", train_loss.item(), epoch)
-        print(f"epoch: {epoch}, train_loss: {train_loss.item()}")
+        writter.add_scalar("lr", optimizer.param_groups[0]['lr'], epoch)
 
         scheduler.step()
 
         if epoch % val_freq == 0:
+            print(f"epoch: {epoch}, train_loss: {train_loss.item()}")
             with torch.no_grad():
                 model.eval()
                 loss_total = 0
@@ -225,7 +229,10 @@ def Acc_train(dataset_train: EUROCDataset, dataset_val: EUROCDataset, outpur_dir
         if epoch % save_freq == 0:
             torch.save({'func_ba_model': model.biasfunc_a.state_dict(), 'optimizer': optimizer.state_dict(), \
                         'scheduler': scheduler.state_dict(), 'epoch': epoch, 'valloss': loss_total}, model_save_path + "/model_epoch_" + str(epoch) + ".pt")
+        torch.cuda.synchronize()
+        gpu_memory.append(torch.cuda.max_memory_allocated() / 1024 ** 2)
     writter.close()
+    return gpu_memory
     
 
 
@@ -334,6 +341,8 @@ def simple_visualization(dict_path):
     aoe = AOE(X_gt[:,:3,:3], R_pred)
     ate = ATE(X_gt[:,:3,3], sol_pred[:,7:10])
     print(f"sequence: {os.path.basename(os.path.dirname(dict_path)):20} AOE: {aoe:.3f} ATE vel: {ate:.3f}")
+
+    return aoe, ate
     
 
 def plot_bias(dict_path, dateset: BaseDataset):
@@ -531,7 +540,7 @@ def testAxb(dataset_test: BaseDataset, base_dir: str, recompute: bool = False):
                     X_Axb[i,:3,:3] = X_Axb[i-1,:3,:3] @ Lie.SO3exp(w_hat[i-1] * dt)
                     X_Axb[i,:3,3] = X_Axb[i-1,:3,3] + (bmv(X_Axb[i-1,:3,:3], a_hat[i-1]) + g_const ) * dt
                     X_Axb[i,:3,4] = X_Axb[i-1,:3,4] + X_Axb[i-1,:3,3] * dt
-                datadic = {'X_Axb': X_Axb, 'X_gt': X_gt, 't_gt': t_gt}
+                datadic = {'X_Axb': X_Axb, 'X_gt': X_gt, 't_gt': t_gt, 'u_Axb': torch.cat([w_hat, a_hat], dim=-1)}
                 pdump(datadic, results_path_Axb)
             else:
                 datadic = pload(results_path_Axb)
@@ -595,7 +604,7 @@ def compare_visualization(dataset_test: BaseDataset, outputdir: str, other_resul
             for axis_index in range(3):
                 ax[axis_index].plot(t_gt, rpy_gt[:, axis_index], color = 'C0', label = 'Ground Truth', linewidth=2)
                 ax[axis_index].plot(t_gt, rpy_raw[:, axis_index], color = 'C2', label = 'Raw IMU', linestyle='-.')
-                ax[axis_index].plot(t_gt, rpy_Axb[:, axis_index], color = 'C3', label = 'Linear Model')
+                # ax[axis_index].plot(t_gt, rpy_Axb[:, axis_index], color = 'C3', label = 'Linear Model')
                 ax[axis_index].plot(t_gt, rpy_pred[:, axis_index], color = 'C1', label = 'Proposed')
                 ax[axis_index].grid(True)
                 if y_limits[axis_index] != None:
@@ -620,9 +629,10 @@ def compare_visualization(dataset_test: BaseDataset, outputdir: str, other_resul
             y_limits = [[-10, 10], [-10, 10], [-10, 10]]
             fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 6))
             for axis_index in range(3):
-                ax[axis_index].plot(t_gt, error_raw[:, axis_index], color = 'C2', label = 'Raw IMU', linestyle='-.')
-                ax[axis_index].plot(t_gt, error_Axb[:, axis_index], color = 'C3', label = 'Linear Model')
-                ax[axis_index].plot(t_gt, error_pred[:, axis_index], color = 'C1', label = 'Proposed')
+                ax[axis_index].plot(t_gt, torch.zeros_like(t_gt), color = 'C0', linestyle='--')
+                ax[axis_index].plot(t_gt, error_raw[:, axis_index], color = 'C2', label = 'Raw IMU', linestyle='-.', linewidth=2)
+                ax[axis_index].plot(t_gt, error_Axb[:, axis_index], color = 'C3', label = 'Linear Model', linewidth=2)
+                ax[axis_index].plot(t_gt, error_pred[:, axis_index], color = 'C1', label = 'Proposed', linewidth=2)
                 if other_results is not None:
                     raise NotImplementedError
                 ax[axis_index].grid(True)
@@ -644,18 +654,18 @@ def compare_visualization(dataset_test: BaseDataset, outputdir: str, other_resul
             vel_raw = X_raw[:,:3,3]
             vel_Axb = X_Axb[:,:3,3]
             # y_limits = [[-10, 10], [-10, 10], [-0.5, 0.5]]
-            tmp = torch.cat([vel_pred, vel_Axb], dim=0)
-            y_limits = [[torch.min(tmp[:,i]).item()*1.5, torch.max(tmp[:,i]).item() * 1.5] for i in range(3)]
+            y_label = ['v-x (m/s)', 'v-y (m/s)', 'v-z (m/s)']
+            y_limits = adjust_y_lim(vel_pred, vel_Axb, vel_gt)
             fig, ax = plt.subplots(3, 1, sharex=True, figsize=(10, 6))
             for axis_index in range(3):
                 ax[axis_index].plot(t_gt, vel_gt[:, axis_index], color = 'C0', label = 'Ground Truth', linewidth=2)
-                ax[axis_index].plot(t_gt, vel_raw[:, axis_index], color = 'C2', label = 'Raw IMU', linestyle='-.')
-                ax[axis_index].plot(t_gt, vel_Axb[:, axis_index], color = 'C3', label = 'Linear Model')
-                ax[axis_index].plot(t_gt, vel_pred[:, axis_index], color = 'C1', label = 'Proposed')
+                ax[axis_index].plot(t_gt, vel_raw[:, axis_index], color = 'C2', label = 'Raw IMU', linestyle='-.', linewidth=2)
+                ax[axis_index].plot(t_gt, vel_Axb[:, axis_index], color = 'C3', label = 'Linear Model', linewidth=2)
+                ax[axis_index].plot(t_gt, vel_pred[:, axis_index], color = 'C1', label = 'Proposed', linewidth=2)
                 ax[axis_index].grid(True)
                 if y_limits[axis_index] != None:
                     ax[axis_index].set_ylim(y_limits[axis_index])
-                ax[axis_index].set_ylabel(f'v-{axis_index} (m/s)', fontsize=13)
+                ax[axis_index].set_ylabel(y_label[axis_index], fontsize=13)
             ax[axis_index].set_xlabel(x_label, fontsize=13)
             ax[0].legend(loc='upper center', ncol=4, bbox_to_anchor=(0.5, 1.40), fontsize=13)
             fig.align_labels()
@@ -696,3 +706,4 @@ def compare_visualization(dataset_test: BaseDataset, outputdir: str, other_resul
             APE_Axb = ATE(X_gt[...,:3,4], X_Axb[...,:3,4])
             APE_pred = ATE(X_gt[...,:3,4], p_pred)
             print(f"Seq name: {s:20}APE: raw: {APE_raw:.3f} (m), Axb: {APE_Axb:.3f} (m),  pred: {APE_pred:.3f} (m)")
+    print("Please use EVO or OPENVINS to calculate the metric for formal evaluation.")
