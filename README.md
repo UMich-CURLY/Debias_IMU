@@ -12,7 +12,7 @@ The overall framework is illustrated below:
 </figure>
 
 ### Paper
-Coming soon
+This work has been accepted at RSS, 2025. You can find the arXiv version [here](https://arxiv.org/abs/2504.09495).
 
 ## Setup
 
