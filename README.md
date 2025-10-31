@@ -7,7 +7,7 @@ The overall framework is illustrated below:
 
 
 <figure>
-  <img src="figs/fig1.png" alt="Framework" width="600">
+  <img src="figs/Main.png" alt="Framework" width="600">
   <figcaption>Figure 1: The hierarchical neural ODE framework.</figcaption>
 </figure>
 
