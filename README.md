@@ -67,7 +67,14 @@ The results will be saved to ./results/ablation.pdf.
 
 
 ## Citation
-To be added once the corresponding paper is published.
+```
+@inproceedings{liu2025debias,
+  title={Debiasing 6-DOF IMU via Hierarchical Learning of Continuous Bias Dynamics},
+  author={Liu, Ben and Lin, Tzu-Yuan and Zhang, Wei and Ghaffari, Maani},
+  booktitle={Proceedings of Robotics: Science and Systems (RSS)},
+  year={2025}
+}
+```
 
 ## Others
 Calling `pickle.loads` will throw a warning in current versions, you can fix it by following [Here](https://github.com/pytorch/pytorch/issues/130242).
